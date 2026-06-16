@@ -1,0 +1,116 @@
+FILE
+- stat -> int stat(const char *pathname, struct stat *statbuf) 
+  usata per vedere il tipo di file, data di modifica (richiede struct stat)
+- lstat -> int lstat(const char *pathname, 
+  struct stat *statbuf) usata per vedere il tipo di file e metadati (non segue i link simbolici)
+- open -> int open(const char *pathname, int flags, mode_t mode) usata per aprire un file
+- close -> int close(int fd) usata per chiudere un file descriptor
+- read -> ssize_t read(int fd, void *buf, size_t count) usata per leggere da un file descriptor
+- write -> ssize_t write(int fd, const void *buf, size_t count) usata per scrivere su un file descriptor
+- dup -> int dup(int oldfd) 
+  usata per duplicare un file descriptor
+- dup2 -> int dup2(int oldfd, int newfd) 
+  usata per reindirizzare newfd in oldfd
+- pipe -> int pipe(int pipefd[2]) 
+  usata per creare una pipe, 0 in lettura e 1 in scrittura
+- lseek -> off_t lseek(int fd, off_t offset, int whence) 
+  usata per spostare di un offset il cursore dentro il file
+- unlink -> int unlink(const char *pathname)
+  usata per eliminare un nome dal filesystem e possibilmente il file associato (cancella un file)
+
+SEGNALI
+- kill -> int kill(pid_t pid, int sig) 
+  usata per inviare il segnale 'sig' al processo 'pid'
+- signal -> sighandler_t signal(int signum, sighandler_t handler) 
+  usata per eseguire azioni (tramite handler) dopo aver ricevuto il segnale specificato (es. SIGINT)
+- sigaction -> int sigaction(int signum, const struct sigaction *act, struct sigaction *oldact) 
+  usata per una gestione avanzata dei segnali. Richiede la struct sigaction e permette l'uso di un handler strutturato come: void handler(int signo, siginfo_t *si, void *ptr)
+- siginfo_t -> struttura usata per contenere info del segnale. Permette di usare una union 
+  { char c[8]; void *p; } per trasmettere messaggi assieme al segnale
+- pause -> int pause(void)
+  usata per sospendere l'esecuzione del processo chiamante fino alla ricezione di un segnale
+- sigqueue -> int sigqueue(pid_t pid, int sig, const union sigval value)
+  usata per inviare un segnale includendo un payload (dati aggiuntivi) a un processo specificato
+  
+// MITTENTE: Invio del payload
+  union sigval val;
+  val.sival_int = 42; // Inserimento dato nella union (può essere sival_int o sival_ptr)
+  sigqueue(pid_destinatario, SIGUSR1, val);
+
+  // DESTINATARIO: Ricezione (richiede sigaction configurata con flag SA_SIGINFO)
+  void handler(int signo, siginfo_t *info, void *context) {
+      printf("Segnale %d ricevuto con payload: %d\n", signo, info->si_value.sival_int);
+  }
+- sigemptyset -> int sigemptyset(sigset_t *set)
+  usata per inizializzare e svuotare un set di segnali. Fondamentale per azzerare il campo sa_mask all'interno della struct sigaction prima dell'uso
+
+PROCESSI
+- fork -> pid_t fork(void) 
+  usata per creare un processo figlio. Ritorna 0 al figlio, il PID del figlio al padre, e -1 in caso di errore
+- execlp -> int execlp(const char *file, const char *arg, ... /* (char  *) NULL */) 
+  esegue un comando cercandolo nel PATH, passando gli argomenti come lista (terminata da NULL)
+- execvp -> int execvp(const char *file, char *const argv[]) 
+  esegue un comando cercandolo nel PATH, passando gli argomenti come un array di puntatori a stringhe (terminato da NULL)
+- execl -> int execl(const char *pathname, const char *arg, ... /* (char  *) NULL */) 
+  esegue un comando da un percorso esatto, argomenti passati come lista
+- execv -> int execv(const char *pathname, char *const argv[]) 
+  esegue un comando da un percorso esatto, argomenti passati come array di stringhe
+- wait -> pid_t wait(int *wstatus) 
+  usata per aspettare che un processo figlio termini (se passato NULL, un figlio qualsiasi)
+- waitpid -> pid_t waitpid(pid_t pid, int *wstatus, int options) 
+  usata per aspettare che uno specifico processo figlio (indicato dal pid) termini
+- WEXITSTATUS -> macro WEXITSTATUS(status) 
+  usata per estrarre il codice di uscita del figlio dalla variabile status (da usare dopo wait)
+- exit -> void exit(int status) 
+  usata per terminare il processo corrente (es. exit(1) per segnalare un errore)
+
+DIRECTORY
+- getcwd -> char *getcwd(char *buf, size_t size)
+  usata per ottenere la current working directory
+- chdir -> int chdir(const char *path)
+  usata per cambiare la directory di lavoro corrente
+- opendir -> DIR *opendir(const char *name)
+  usata per aprire uno stream di directory
+- closedir -> int closedir(DIR *dirp)
+  usata per chiudere uno stream di directory
+- readdir -> struct dirent *readdir(DIR *dirp)
+  usata per elencare una a una le directory entry (es. struct dirent *de = readdir(dir))
+- rewinddir -> void rewinddir(DIR *dirp)
+  usata per fare riniziare l'elenco delle directory entry
+- scandir -> int scandir(const char *dirp, struct dirent ***namelist, int (*filter)(const struct dirent *), int (*compar)(const struct dirent **, const struct dirent **))
+  usata da usare con struct dirent per filtrare ed elencare file in una directory. 
+  Esempio di utilizzo:
+  struct dirent **namelist;
+  int n = scandir(".", &namelist, NULL, alphasort);
+  if (n >= 0) {
+      for (int i = 0; i < n; i++) {
+          printf("%s\n", namelist[i]->d_name);
+          free(namelist[i]);
+      }
+      free(namelist);
+  }
+- mkdir -> int mkdir(const char *pathname, mode_t mode)
+  usata per creare una nuova directory assegnando i permessi definiti con 0xxx
+I/O MULTIPLEXING
+- poll -> int poll(struct pollfd *fds, nfds_t nfds, int timeout)
+  usata per monitorare più file descriptor. timeout: -1 (bloccante), 0 (non bloccante), >0 (attesa in millisecondi). 
+ Richiede array di struct pollfd {int fd; short events; short revents;}. 
+Il campo 'events' indica gli eventi richiesti, 'revents' è popolato con gli eventi verificatisi.
+
+
+PYTHON
+- os.walk -> os.walk(top, topdown=True, onerror=None, followlinks=False)
+  usata per navigare un intero albero di directory. Ritorna un generatore che produce per ogni iterazione una tupla (dirpath, dirnames, filenames).
+- os.scandir / os.listdir -> os.scandir(path) / os.listdir(path)
+  usata per elencare i contenuti di una directory (analogo a readdir). os.listdir ritorna una semplice lista di stringhe. os.scandir (consigliato per efficienza) ritorna un iteratore di oggetti os.DirEntry, che contengono attributi integrati e pre-computati (es. de.is_file(), de.name).
+- os.path.getmtime -> os.path.getmtime(path)
+  usata per ottenere il timestamp (in secondi dal'epoch, come float) dell'ultima modifica di un file o directory.
+- pathlib.Path -> Path(path)
+  classe per la manipolazione di percorsi del filesystem in stile orientato agli oggetti. Sostituisce os.path. Da usare quando si desidera scrivere codice più pulito: permette concatenazioni (Path('dir') / 'file.txt'), controlli diretti (p.exists(), p.is_dir()) e operazioni integrate (p.read_text()).
+- Slicing [2:] -> lista[start:stop:step]
+  Esempio [2:]: arr = ['a', 'b', 'c', 'd', 'e'] -> arr[2:] produce ['c', 'd', 'e'].
+  Esempio [:2]: arr = ['a', 'b', 'c', 'd', 'e'] -> arr[:2] produce ['a', 'b'] (questo estrae la prima parte).
+- os.access -> os.access(path, mode)
+  usata per controllare i permessi effettivi di un processo su un file specifico. mode usa le costanti: os.F_OK (esiste), os.R_OK (leggibile), os.W_OK (scrivibile), os.X_OK (eseguibile).
+
+
