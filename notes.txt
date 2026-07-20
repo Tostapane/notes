@@ -97,6 +97,22 @@ I/O MULTIPLEXING
  Richiede array di struct pollfd {int fd; short events; short revents;}. 
 Il campo 'events' indica gli eventi richiesti, 'revents' è popolato con gli eventi verificatisi.
 
+TIMERFD
+
+timerfd_create -> int timerfd_create(int clockid, int flags)
+used to create a timer that delivers expiration notifications via a file descriptor.
+clockid options:
+CLOCK_MONOTONIC: measures absolute elapsed time, unaffected by system time changes. Best for timeouts and measuring intervals.
+CLOCK_REALTIME: system wall-clock time, can jump forwards/backwards due to NTP or manual changes.
+flags options:
+TFD_NONBLOCK: prevents read() from blocking if the timer hasn't expired. Essential when using I/O multiplexing like poll().
+TFD_CLOEXEC: automatically closes the file descriptor when an exec() family function is called.
+timerfd_settime -> int timerfd_settime(int fd, int flags, const struct itimerspec *new_value, struct itimerspec *old_value)
+used to start or stop the timer.
+flags: 0 for relative time (e.g., "expire in 5 seconds"), TFD_TIMER_ABSTIME for absolute time.
+Requires struct itimerspec { struct timespec it_interval; struct timespec it_value; }.
+it_value: initial expiration time (tv_sec for seconds, tv_nsec for nanoseconds).
+it_interval: period for recurring timers. Set to 0 for a one-shot timeout.
 
 PYTHON
 - os.walk -> os.walk(top, topdown=True, onerror=None, followlinks=False)
